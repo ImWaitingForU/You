@@ -1,25 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
+    android:background="@drawable/menu_pressed"
     android:id="@+id/menu"
-    android:gravity="center"
+    android:clickable="true"
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingTop="50dp"
-    android:paddingBottom="50dp"
+    android:gravity="center"
+    android:paddingBottom="60dp"
+    android:paddingTop="60dp"
     android:orientation="vertical">
 
     <ImageView
-        android:scaleType="centerCrop"
         android:id="@+id/ivMenu"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:scaleType="centerCrop"/>
 
     <TextView
-        android:layout_marginTop="4dp"
         android:id="@+id/tvMenu"
         style="@style/TextAppearance.AppCompat.Body2"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center"/>
 
 </LinearLayout>
