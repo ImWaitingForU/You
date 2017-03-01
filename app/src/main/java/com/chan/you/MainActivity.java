@@ -3,6 +3,7 @@ package com.chan.you;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -22,6 +23,7 @@ import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.chad.library.adapter.base.listener.OnItemChildClickListener;
 import com.chan.you.bean.MenuBean;
+import com.chan.you.utils.SpUtils;
 
 import java.util.ArrayList;
 
@@ -29,7 +31,6 @@ import static com.chan.you.CommonData.F_PHONE;
 import static com.chan.you.CommonData.F_QQ;
 import static com.chan.you.CommonData.F_WEIBO;
 import static com.chan.you.CommonData.WEIXIN_CHATTING_MIMETYPE;
-import static com.chan.you.CommonData.WEIXIN_SNS_MIMETYPE;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -37,12 +38,19 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView mRecyclerView;
     private ArrayList<MenuBean> mMenus;
 
+    private SharedPreferences sp;
+
     @Override
     protected void onCreate (Bundle savedInstanceState) {
         super.onCreate (savedInstanceState);
         setContentView (R.layout.activity_main);
-
-        setTitle ("成熟稳重的冯老湿");
+        sp = getSharedPreferences (SpUtils.SP_NAME, MODE_PRIVATE);
+        String name = SpUtils.getString (sp, SpUtils.KEY_NAME);
+        if (name == null || name.equals ("")) {
+            setTitle ("他/她");
+        } else {
+            setTitle (name);
+        }
 
         mMenus = new ArrayList<> ();
         mMenus.add (new MenuBean ("给他打电话", R.drawable.ic_call));
@@ -99,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
                 //微信：通过电话查询微信号,根据微信号跳转到聊天界面
                 if (checkApkExist (this, CommonData.WECHAT_APP_PACKAGE)) {
                     shareToFriend (this, getChattingID (this, F_PHONE, WEIXIN_CHATTING_MIMETYPE));
-                    Log.d (TAG, "getYou: id=" + getChattingID (this, F_PHONE, WEIXIN_SNS_MIMETYPE));
+                    Log.d (TAG, "getYou: id=" + getChattingID (this, F_PHONE, WEIXIN_CHATTING_MIMETYPE));
                 } else {
                     Toast.makeText (this, "本机未安装微信应用", Toast.LENGTH_SHORT).show ();
                 }
