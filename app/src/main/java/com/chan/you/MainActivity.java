@@ -16,6 +16,9 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
@@ -27,14 +30,15 @@ import com.chan.you.utils.SpUtils;
 
 import java.util.ArrayList;
 
-import static com.chan.you.CommonData.F_PHONE;
-import static com.chan.you.CommonData.F_QQ;
-import static com.chan.you.CommonData.F_WEIBO;
 import static com.chan.you.CommonData.WEIXIN_CHATTING_MIMETYPE;
+import static com.chan.you.CommonData.WEIXIN_SNS_MIMETYPE;
+
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "You";
+//    private static final int REQUEST_CODE = 0X111;
+
     private RecyclerView mRecyclerView;
     private ArrayList<MenuBean> mMenus;
 
@@ -45,12 +49,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate (savedInstanceState);
         setContentView (R.layout.activity_main);
         sp = getSharedPreferences (SpUtils.SP_NAME, MODE_PRIVATE);
-        String name = SpUtils.getString (sp, SpUtils.KEY_NAME);
-        if (name == null || name.equals ("")) {
-            setTitle ("他/她");
-        } else {
-            setTitle (name);
-        }
 
         mMenus = new ArrayList<> ();
         mMenus.add (new MenuBean ("给他打电话", R.drawable.ic_call));
@@ -80,48 +78,106 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onResume () {
+        super.onResume ();
+        String name = SpUtils.getString (sp, SpUtils.KEY_NAME);
+        if (name == null || name.equals ("")) {
+            setTitle ("他/她");
+        } else {
+            setTitle (name);
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu (Menu menu) {
+        MenuInflater inflater = getMenuInflater ();
+        inflater.inflate (R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected (MenuItem item) {
+        if (item.getItemId () == R.id.settings) {
+            Intent intent = new Intent (this, SettingActivity.class);
+            startActivity(intent);
+        }
+        return true;
+    }
+
+//    @Override
+//    protected void onActivityResult (int requestCode, int resultCode, Intent data) {
+//        if (requestCode==REQUEST_CODE){
+//
+//        }
+//    }
+
     private void getYou (int i) {
         Intent intent;
         switch (i) {
             case 0:
                 //打电话
-                intent = new Intent (Intent.ACTION_DIAL, Uri.parse ("tel:" + F_PHONE));
-                startActivity (intent);
+                if (!SpUtils.getPhone (sp).equals ("")) {
+                    intent = new Intent (Intent.ACTION_DIAL, Uri.parse ("tel:" + SpUtils.getPhone (sp)));
+                    startActivity (intent);
+                } else {
+                    Toast.makeText (this, "还没有添加手机号，请到设置界面添加", Toast.LENGTH_SHORT).show ();
+                }
                 break;
             case 1:
                 //发短信
-                intent = new Intent (Intent.ACTION_SENDTO, Uri.parse ("smsto:" + F_PHONE));
-                //intent.putExtra("sms_body", message);
-                startActivity (intent);
+                if (!SpUtils.getPhone (sp).equals ("")) {
+                    intent = new Intent (Intent.ACTION_SENDTO, Uri.parse ("smsto:" + SpUtils.getPhone (sp)));
+                    startActivity (intent);
+                } else {
+                    Toast.makeText (this, "还没有添加手机号，请到设置界面添加", Toast.LENGTH_SHORT).show ();
+                }
                 break;
             case 2:
-                //QQ:根据qq号跳转到聊天界面
-                if (checkApkExist (this, CommonData.QQ_APP_PACKAGE)) {
-                    startActivity (new Intent (Intent.ACTION_VIEW, Uri.parse (
-                            "mqqwpa://im/chat?chat_type=wpa&uin=" + F_QQ + "&version=1")));
+                if (!SpUtils.getQQ (sp).equals ("")) {
+                    //QQ:根据qq号跳转到聊天界面
+                    if (checkApkExist (this, CommonData.QQ_APP_PACKAGE)) {
+                        startActivity (new Intent (Intent.ACTION_VIEW, Uri.parse (
+                                "mqqwpa://im/chat?chat_type=wpa&uin=" + SpUtils.getQQ (sp) + "&version=1")));
+                    } else {
+                        Toast.makeText (this, "本机未安装QQ应用", Toast.LENGTH_SHORT).show ();
+                    }
                 } else {
-                    Toast.makeText (this, "本机未安装QQ应用", Toast.LENGTH_SHORT).show ();
+                    Toast.makeText (this, "还没有添加QQ，请到设置界面添加", Toast.LENGTH_SHORT).show ();
                 }
                 break;
             case 3:
-                //微信：通过电话查询微信号,根据微信号跳转到聊天界面
-                if (checkApkExist (this, CommonData.WECHAT_APP_PACKAGE)) {
-                    shareToFriend (this, getChattingID (this, F_PHONE, WEIXIN_CHATTING_MIMETYPE));
-                    Log.d (TAG, "getYou: id=" + getChattingID (this, F_PHONE, WEIXIN_CHATTING_MIMETYPE));
+                if (!SpUtils.getPhone (sp).equals ("")) {
+                    //微信：通过电话查询微信号,根据微信号跳转到聊天界面
+                    if (checkApkExist (this, CommonData.WECHAT_APP_PACKAGE)) {
+//                        shareToFriend (this, getChattingID (this, SpUtils.getPhone (sp), WEIXIN_CHATTING_MIMETYPE));
+                        shareToTimeLine(this,getChattingID (this, SpUtils.getPhone (sp), WEIXIN_CHATTING_MIMETYPE));
+                        Log.d (TAG,
+                               "getYou: id=" + getChattingID (this, SpUtils.getPhone (sp), WEIXIN_CHATTING_MIMETYPE));
+                    } else {
+                        Toast.makeText (this, "本机未安装微信应用", Toast.LENGTH_SHORT).show ();
+                    }
                 } else {
-                    Toast.makeText (this, "本机未安装微信应用", Toast.LENGTH_SHORT).show ();
+                    Toast.makeText (this, "微信根据手机号匹配，请到设置界面添加手机号", Toast.LENGTH_SHORT).show ();
                 }
+
                 break;
             case 4:
-                //微博:根据uid号跳转到用户界面，uid通过weibo的log查看
-                if (checkApkExist (this, CommonData.WEIBO_APP_PACKAGE)) {
-                    intent = new Intent (Intent.ACTION_VIEW);
-                    intent.setData (Uri.parse ("sinaweibo://userinfo?uid=" + F_WEIBO));
-                    Intent chooseIntent = Intent.createChooser (intent, "Weibo");
-                    startActivity (chooseIntent);
+                if (!SpUtils.getWeibo (sp).equals ("")) {
+                    //微博:根据昵称/uid号跳转到用户界面，uid通过weibo的log查看
+                    if (checkApkExist (this, CommonData.WEIBO_APP_PACKAGE)) {
+                        intent = new Intent (Intent.ACTION_VIEW);
+                        // intent.setData (Uri.parse ("sinaweibo://userinfo?uid=" + F_WEIBO));
+                        intent.setData (Uri.parse ("sinaweibo://userinfo?nickname=" + SpUtils.getWeibo (sp)));
+                        Intent chooseIntent = Intent.createChooser (intent, "Weibo");
+                        startActivity (chooseIntent);
+                    } else {
+                        Toast.makeText (this, "本机未安装新浪微博应用", Toast.LENGTH_SHORT).show ();
+                    }
                 } else {
-                    Toast.makeText (this, "本机未安装新浪微博应用", Toast.LENGTH_SHORT).show ();
+                    Toast.makeText (this, "还没有添加微博，请到设置界面添加", Toast.LENGTH_SHORT).show ();
                 }
+
                 break;
             case 5:
                 Toast.makeText (this, "尽请期待~", Toast.LENGTH_SHORT).show ();
@@ -144,6 +200,21 @@ public class MainActivity extends AppCompatActivity {
                                WEIXIN_CHATTING_MIMETYPE);
         context.startActivity (intent);
     }
+
+    /**
+     * 朋友圈
+     * @param context
+     * @param id
+     */
+    public static void shareToTimeLine(Context context,int id) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setDataAndType(Uri.withAppendedPath(
+                ContactsContract.Data.CONTENT_URI, String.valueOf(id)),
+                              WEIXIN_SNS_MIMETYPE);
+        context.startActivity(intent);
+    }
+
 
     /**
      * 根据电话号码查询微信id

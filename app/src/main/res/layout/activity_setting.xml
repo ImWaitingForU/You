@@ -113,8 +113,8 @@
         android:layout_below="@id/tvWeibo"
         android:layout_marginTop="20dp"
         android:background="@color/colorPrimary"
-        android:onClick="go"
-        android:text="开始使用"
+        android:onClick="editFinish"
+        android:text="修改完成"
         android:textColor="@color/colorWhite"/>
 
 </RelativeLayout>

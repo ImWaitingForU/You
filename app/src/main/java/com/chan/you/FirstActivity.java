@@ -10,6 +10,8 @@ import android.widget.Toast;
 
 import com.chan.you.utils.SpUtils;
 
+import static com.chan.you.utils.SpUtils.getStringFromET;
+
 public class FirstActivity extends AppCompatActivity {
 
     private SharedPreferences sp;
@@ -29,7 +31,7 @@ public class FirstActivity extends AppCompatActivity {
         }
 
 
-        setTitle ("填写他/她的资料");
+        setTitle ("填写他/她的:");
 
         etPhone = (EditText) findViewById (R.id.etPhone);
         etQQ = (EditText) findViewById (R.id.etQQ);
@@ -49,13 +51,11 @@ public class FirstActivity extends AppCompatActivity {
         }
     }
 
-    private String getStringFromET (EditText et) {
-        return et.getText ().toString ();
-    }
+
 
     private void goMain () {
-        finish ();
         startActivity (new Intent (this, MainActivity.class));
+        finish ();
     }
 
     public void go (View view) {

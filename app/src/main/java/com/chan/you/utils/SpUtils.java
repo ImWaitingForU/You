@@ -1,6 +1,8 @@
 package com.chan.you.utils;
 
 import android.content.SharedPreferences;
+import android.support.annotation.NonNull;
+import android.widget.EditText;
 
 /**
  * Created by chan on 2017/3/1.
@@ -27,6 +29,21 @@ public class SpUtils {
         return sp.getString (key, null);
     }
 
+    public static String getName (@NonNull SharedPreferences sp) {
+        return sp.getString (KEY_NAME, "");
+    }
+
+    public static String getPhone (@NonNull SharedPreferences sp) {
+        return sp.getString (KEY_PHONE, "");
+    }
+
+    public static String getQQ (@NonNull SharedPreferences sp) {
+        return sp.getString (KEY_QQ, "");
+    }
+
+    public static String getWeibo (@NonNull SharedPreferences sp) {
+        return sp.getString (KEY_WEIBO, "");
+    }
 
     public static void putMsg (SharedPreferences sp, String name, String phone, String qq, String weibo) {
         SharedPreferences.Editor editor = sp.edit ();
@@ -35,5 +52,9 @@ public class SpUtils {
         editor.putString (KEY_QQ, qq);
         editor.putString (KEY_WEIBO, weibo);
         editor.apply ();
+    }
+
+    public static String getStringFromET (EditText et) {
+        return et.getText ().toString ();
     }
 }
