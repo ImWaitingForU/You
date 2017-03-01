@@ -11,6 +11,9 @@ public class CommonData {
     public final static String F_WECHAT = "chan15079192155";
     public final static String F_WEIBO = "3816424559";
 
+    /*微信sdk*/
+    public final static String WECHAT_ID = "3816424559";
+
     public final static String L_PHONE = "13249102665";
     public final static String L_QQ = "515512857";
     public final static String L_WECHAT = "angryfish-";

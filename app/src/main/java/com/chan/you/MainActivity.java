@@ -1,5 +1,6 @@
 package com.chan.you;
 
+import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -9,6 +10,8 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.provider.ContactsContract;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DividerItemDecoration;
@@ -27,9 +30,13 @@ import com.chad.library.adapter.base.BaseViewHolder;
 import com.chad.library.adapter.base.listener.OnItemChildClickListener;
 import com.chan.you.bean.MenuBean;
 import com.chan.you.utils.SpUtils;
+import com.tencent.mm.opensdk.openapi.IWXAPI;
+import com.tencent.mm.opensdk.openapi.WXAPIFactory;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
+import static com.chan.you.CommonData.WECHAT_ID;
 import static com.chan.you.CommonData.WEIXIN_CHATTING_MIMETYPE;
 import static com.chan.you.CommonData.WEIXIN_SNS_MIMETYPE;
 
@@ -37,18 +44,59 @@ import static com.chan.you.CommonData.WEIXIN_SNS_MIMETYPE;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "You";
-//    private static final int REQUEST_CODE = 0X111;
+    //    private static final int REQUEST_CODE = 0X111;
+
+    private IWXAPI wxApi;
 
     private RecyclerView mRecyclerView;
     private ArrayList<MenuBean> mMenus;
 
     private SharedPreferences sp;
+    private static ProgressDialog dialog;
+
+    private MyHandler mHandler = new MyHandler (this);
+    private static final int DIALOG_DISMISS_MESSAGE = 0x123;
+
+    private static class MyHandler extends Handler {
+        private WeakReference<Context> reference;
+
+        public MyHandler (Context context) {
+            reference = new WeakReference<> (context);
+        }
+
+        @Override
+        public void handleMessage (Message msg) {
+            MainActivity activity = (MainActivity) reference.get ();
+            if (activity != null && msg.what == DIALOG_DISMISS_MESSAGE) {
+                if (dialog != null && dialog.isShowing ()) {
+                    dialog.dismiss ();
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onPause () {
+        super.onPause ();
+        Message msg = new Message ();
+        msg.what = DIALOG_DISMISS_MESSAGE;
+        mHandler.sendMessage (msg);
+    }
+
+    @Override
+    protected void onDestroy () {
+        super.onDestroy ();
+        mHandler.removeCallbacksAndMessages (null);
+    }
 
     @Override
     protected void onCreate (Bundle savedInstanceState) {
         super.onCreate (savedInstanceState);
         setContentView (R.layout.activity_main);
         sp = getSharedPreferences (SpUtils.SP_NAME, MODE_PRIVATE);
+
+        wxApi = WXAPIFactory.createWXAPI (this, WECHAT_ID, true);
+        wxApi.registerApp (WECHAT_ID);
 
         mMenus = new ArrayList<> ();
         mMenus.add (new MenuBean ("给他打电话", R.drawable.ic_call));
@@ -87,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             setTitle (name);
         }
+
     }
 
     @Override
@@ -100,17 +149,17 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected (MenuItem item) {
         if (item.getItemId () == R.id.settings) {
             Intent intent = new Intent (this, SettingActivity.class);
-            startActivity(intent);
+            startActivity (intent);
         }
         return true;
     }
 
-//    @Override
-//    protected void onActivityResult (int requestCode, int resultCode, Intent data) {
-//        if (requestCode==REQUEST_CODE){
-//
-//        }
-//    }
+    //    @Override
+    //    protected void onActivityResult (int requestCode, int resultCode, Intent data) {
+    //        if (requestCode==REQUEST_CODE){
+    //
+    //        }
+    //    }
 
     private void getYou (int i) {
         Intent intent;
@@ -119,6 +168,7 @@ public class MainActivity extends AppCompatActivity {
                 //打电话
                 if (!SpUtils.getPhone (sp).equals ("")) {
                     intent = new Intent (Intent.ACTION_DIAL, Uri.parse ("tel:" + SpUtils.getPhone (sp)));
+                    showLoadingDialog ();
                     startActivity (intent);
                 } else {
                     Toast.makeText (this, "还没有添加手机号，请到设置界面添加", Toast.LENGTH_SHORT).show ();
@@ -128,6 +178,7 @@ public class MainActivity extends AppCompatActivity {
                 //发短信
                 if (!SpUtils.getPhone (sp).equals ("")) {
                     intent = new Intent (Intent.ACTION_SENDTO, Uri.parse ("smsto:" + SpUtils.getPhone (sp)));
+                    showLoadingDialog ();
                     startActivity (intent);
                 } else {
                     Toast.makeText (this, "还没有添加手机号，请到设置界面添加", Toast.LENGTH_SHORT).show ();
@@ -137,8 +188,10 @@ public class MainActivity extends AppCompatActivity {
                 if (!SpUtils.getQQ (sp).equals ("")) {
                     //QQ:根据qq号跳转到聊天界面
                     if (checkApkExist (this, CommonData.QQ_APP_PACKAGE)) {
+                        showLoadingDialog ();
                         startActivity (new Intent (Intent.ACTION_VIEW, Uri.parse (
                                 "mqqwpa://im/chat?chat_type=wpa&uin=" + SpUtils.getQQ (sp) + "&version=1")));
+
                     } else {
                         Toast.makeText (this, "本机未安装QQ应用", Toast.LENGTH_SHORT).show ();
                     }
@@ -150,10 +203,26 @@ public class MainActivity extends AppCompatActivity {
                 if (!SpUtils.getPhone (sp).equals ("")) {
                     //微信：通过电话查询微信号,根据微信号跳转到聊天界面
                     if (checkApkExist (this, CommonData.WECHAT_APP_PACKAGE)) {
-//                        shareToFriend (this, getChattingID (this, SpUtils.getPhone (sp), WEIXIN_CHATTING_MIMETYPE));
-                        shareToTimeLine(this,getChattingID (this, SpUtils.getPhone (sp), WEIXIN_CHATTING_MIMETYPE));
+                        shareToFriend (this, getChattingID (this, SpUtils.getPhone (sp), WEIXIN_CHATTING_MIMETYPE));
+                        showLoadingDialog ();
                         Log.d (TAG,
                                "getYou: id=" + getChattingID (this, SpUtils.getPhone (sp), WEIXIN_CHATTING_MIMETYPE));
+                        Toast.makeText (this, "暂时只支持跳转到微信", Toast.LENGTH_SHORT).show ();
+
+                        //                        WXTextObject textObject = new WXTextObject ();
+                        //                        textObject.text = "aaa";
+                        //                        WXMediaMessage msg = new WXMediaMessage ();
+                        //                        msg.mediaObject = textObject;
+                        //                        msg.description = "aaa";
+                        //
+                        //                        SendMessageToWX.Req req = new SendMessageToWX.Req ();
+                        ////                        req.transaction = buildTransaction();
+                        //                        req.message = msg;
+                        //                        req.scene = SendMessageToWX.Req.WXSceneSession;
+                        //
+                        //                        wxApi.sendReq (req);
+
+
                     } else {
                         Toast.makeText (this, "本机未安装微信应用", Toast.LENGTH_SHORT).show ();
                     }
@@ -170,6 +239,7 @@ public class MainActivity extends AppCompatActivity {
                         // intent.setData (Uri.parse ("sinaweibo://userinfo?uid=" + F_WEIBO));
                         intent.setData (Uri.parse ("sinaweibo://userinfo?nickname=" + SpUtils.getWeibo (sp)));
                         Intent chooseIntent = Intent.createChooser (intent, "Weibo");
+                        showLoadingDialog ();
                         startActivity (chooseIntent);
                     } else {
                         Toast.makeText (this, "本机未安装新浪微博应用", Toast.LENGTH_SHORT).show ();
@@ -198,21 +268,22 @@ public class MainActivity extends AppCompatActivity {
         intent.setFlags (Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.setDataAndType (Uri.withAppendedPath (ContactsContract.Data.CONTENT_URI, String.valueOf (id)),
                                WEIXIN_CHATTING_MIMETYPE);
+        Log.d (TAG, "shareToFriend: intent:" + intent.toString ());
         context.startActivity (intent);
     }
 
     /**
      * 朋友圈
+     *
      * @param context
      * @param id
      */
-    public static void shareToTimeLine(Context context,int id) {
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.setDataAndType(Uri.withAppendedPath(
-                ContactsContract.Data.CONTENT_URI, String.valueOf(id)),
-                              WEIXIN_SNS_MIMETYPE);
-        context.startActivity(intent);
+    public static void shareToTimeLine (Context context, int id) {
+        Intent intent = new Intent (Intent.ACTION_VIEW);
+        intent.setFlags (Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setDataAndType (Uri.withAppendedPath (ContactsContract.Data.CONTENT_URI, String.valueOf (id)),
+                               WEIXIN_SNS_MIMETYPE);
+        context.startActivity (intent);
     }
 
 
@@ -221,25 +292,29 @@ public class MainActivity extends AppCompatActivity {
      **/
     public static int getChattingID (Context context, String querymobile, String mimeType) {
         if (context == null || querymobile == null || querymobile.equals ("")) {
-            return -1;
+            return 0;
         }
         ContentResolver resolver = context.getContentResolver ();
         Uri uri = Uri.parse ("content://com.android.contacts/data");
         StringBuilder sb = new StringBuilder ();
         sb.append (ContactsContract.Data.MIMETYPE).append (" = ").append ("'");
         sb.append (mimeType).append ("'");
-        sb.append (" AND ").append ("replace(data1,' ','')").append (" = ").append ("'").append (querymobile)
-          .append ("'");
+        sb.append (" AND ").append ("replace(data1,' ','')").append (" = ").append ("'")
+          .append (String.valueOf (querymobile)).append ("'");
+        Log.d (TAG, "getChattingID: ---------uri---------" + uri);
+        Log.d (TAG, "getChattingID: ---------sb---------" + sb.toString ());
         Cursor cursor = resolver.query (uri, new String[] {ContactsContract.Data._ID}, sb.toString (), null, null);
-        Log.d (TAG, "getChattingID: sb=" + sb);
-        Log.d (TAG, "getChattingID: cursor" + cursor.toString ());
+        Log.d (TAG, "getChattingID: ---------cursor---------" + cursor.toString ());
+        for (int i = 0; i < cursor.getColumnNames ().length; i++) {
+            Log.d (TAG, "getChattingID: columnName:" + cursor.getColumnNames ()[i]);
+            Log.d (TAG, "getChattingID: cursor.getCount ()" + cursor.getCount ());
+        }
         while (cursor.moveToNext ()) {
             int wexin_id = cursor.getInt (cursor.getColumnIndex (ContactsContract.Data._ID));
-            Log.d (TAG, "getChattingID: weixinId=" + wexin_id);
             return wexin_id;
         }
         cursor.close ();
-        return -1;
+        return 0;
     }
 
 
@@ -273,6 +348,15 @@ public class MainActivity extends AppCompatActivity {
             baseViewHolder.setText (R.id.tvMenu, menuBean.getTitle ())
                           .setImageResource (R.id.ivMenu, menuBean.getImgId ()).addOnClickListener (R.id.menu);
         }
+    }
+
+    private void showLoadingDialog () {
+        if (dialog == null) {
+            dialog = new ProgressDialog (this);
+            dialog.setMessage ("正在跳转...");
+            dialog.setCancelable (false);
+        }
+        dialog.show ();
     }
 
 }
